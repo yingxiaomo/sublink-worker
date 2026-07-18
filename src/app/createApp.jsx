@@ -23,7 +23,10 @@ const DEFAULT_USER_AGENT = 'curl/7.74.0';
 export function createApp(bindings = {}) {
     const runtime = normalizeRuntime(bindings);
     const services = {
-        shortLinks: runtime.kv ? new ShortLinkService(runtime.kv, { shortLinkTtlSeconds: runtime.config.shortLinkTtlSeconds }) : null,
+        shortLinks: runtime.kv ? new ShortLinkService(runtime.kv, {
+            shortLinkTtlSeconds: runtime.config.shortLinkTtlSeconds,
+            fixedShortCode: runtime.config.fixedShortCode
+        }) : null,
         configStorage: runtime.kv ? new ConfigStorageService(runtime.kv, { configTtlSeconds: runtime.config.configTtlSeconds }) : null
     };
 

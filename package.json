@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build-vercel.mjs",
-    "deploy": "npm run setup-kv && wrangler deploy",
+    "deploy": "npm run setup-kv && wrangler deploy --var SUBLINK_FIXED_SHORT_CODE:${SUBLINK_FIXED_SHORT_CODE}",
     "dev": "wrangler dev",
     "start": "wrangler dev",
     "test": "vitest run",
