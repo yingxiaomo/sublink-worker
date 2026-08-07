@@ -190,6 +190,20 @@ export function convertSurgeProxyToObject(line) {
             // Skip HTTP/HTTPS proxy types
             return null;
 
+        case 'naive':
+            return {
+                tag,
+                type: 'naive',
+                server,
+                server_port: port,
+                username: params.username,
+                password: params.password,
+                sni: params.sni || params['server-name'],
+                insecure: parseBool(params['skip-cert-verify']),
+                scheme: params.scheme || 'https',
+                protocol: params.protocol || params.scheme || 'https'
+            };
+
         case 'direct':
         case 'reject':
         case 'reject-tinygif':

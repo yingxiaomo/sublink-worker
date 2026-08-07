@@ -270,6 +270,20 @@ export function convertYamlProxyToObject(p) {
                 tls
             };
         }
+        case 'naive': {
+            return {
+                tag: name,
+                type: 'naive',
+                server: p.server,
+                server_port: parseInt(p.port),
+                username: p.username,
+                password: p.password,
+                sni: p.sni,
+                insecure: !!p['skip-cert-verify'],
+                scheme: p.scheme || 'https',
+                protocol: p.protocol || p.scheme || 'https'
+            };
+        }
         default:
             return null;
     }

@@ -30,6 +30,8 @@ export function parseNaive(url) {
         false
     );
 
+    const scheme = url.startsWith('naive+http://') ? 'http' : 'https';
+
     return {
         type: 'naive',
         tag: name,
@@ -37,8 +39,8 @@ export function parseNaive(url) {
         server_port: port,
         username,
         password,
-        // Naive over HTTPS is the common case for naive+https://
-        scheme: url.startsWith('naive+http://') ? 'http' : 'https',
+        scheme,
+        protocol: params.protocol || scheme,
         sni: params.sni || params.host || host,
         insecure: !!insecure
     };

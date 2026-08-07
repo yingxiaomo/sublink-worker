@@ -324,8 +324,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     username: proxy.username,
                     password: proxy.password,
                     ...(proxy.sni ? { sni: proxy.sni } : {}),
-                    // Clash/mihomo compatibility
-                    'skip-cert-verify': true,
+                    ...(proxy.protocol || proxy.scheme ? { protocol: proxy.protocol || proxy.scheme } : {}),
+                    ...(proxy.insecure !== undefined ? { 'skip-cert-verify': proxy.insecure } : { 'skip-cert-verify': true }),
                 };
             default:
                 return proxy; // Return as-is if no specific conversion is defined
