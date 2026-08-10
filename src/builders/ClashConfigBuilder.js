@@ -203,7 +203,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'client-fingerprint': proxy.tls?.utls?.fingerprint,
                     servername: proxy.tls?.server_name || '',
                     network: proxy.transport?.type || 'tcp',
-                    'ws-opts': proxy.transport?.type === 'ws' ? {
+                    'ws-opts': (proxy.transport?.type === 'ws' || proxy.transport?.type === 'httpupgrade') ? {
                         path: proxy.transport.path,
                         headers: proxy.transport.headers
                     } : undefined,
