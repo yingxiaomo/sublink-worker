@@ -158,10 +158,11 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     // (many nodes advertise insecure=0 but fail strict verification)
                     'skip-cert-verify': true,
                     network: proxy.transport?.type || proxy.network || 'tcp',
-                    'ws-opts': proxy.transport?.type === 'ws'
+                    'ws-opts': (proxy.transport?.type === 'ws' || proxy.transport?.type === 'httpupgrade')
                         ? {
                             path: proxy.transport.path,
-                            headers: proxy.transport.headers
+                            headers: proxy.transport.headers,
+                            ...(proxy.transport?.type === 'httpupgrade' ? { 'v2ray-http-upgrade': true } : {})
                         }
                         : undefined,
                     'http-opts': proxy.transport?.type === 'http'
@@ -205,7 +206,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     network: proxy.transport?.type || 'tcp',
                     'ws-opts': (proxy.transport?.type === 'ws' || proxy.transport?.type === 'httpupgrade') ? {
                         path: proxy.transport.path,
-                        headers: proxy.transport.headers
+                        headers: proxy.transport.headers,
+                        ...(proxy.transport?.type === 'httpupgrade' ? { 'v2ray-http-upgrade': true } : {})
                     } : undefined,
                     'xhttp-opts': (proxy.transport?.type === 'xhttp' || proxy.transport?.type === 'splithttp') ? {
                         path: proxy.transport.path,
@@ -261,9 +263,10 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'client-fingerprint': proxy.tls?.utls?.fingerprint,
                     sni: proxy.tls?.server_name || '',
                     network: proxy.transport?.type || 'tcp',
-                    'ws-opts': proxy.transport?.type === 'ws' ? {
+                    'ws-opts': (proxy.transport?.type === 'ws' || proxy.transport?.type === 'httpupgrade') ? {
                         path: proxy.transport.path,
-                        headers: proxy.transport.headers
+                        headers: proxy.transport.headers,
+                        ...(proxy.transport?.type === 'httpupgrade' ? { 'v2ray-http-upgrade': true } : {})
                     } : undefined,
                     'reality-opts': proxy.tls?.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,

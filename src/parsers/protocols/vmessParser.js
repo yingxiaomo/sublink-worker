@@ -55,6 +55,12 @@ export function parseVmess(url) {
             path: vmessConfig.path,
             headers: { 'host': vmessConfig.host ? vmessConfig.host : vmessConfig.sni }
         };
+    } else if (networkType === 'httpupgrade' || transportType === 'httpupgrade') {
+        transport = {
+            type: 'httpupgrade',
+            path: vmessConfig.path,
+            headers: { 'host': vmessConfig.host ? vmessConfig.host : vmessConfig.sni }
+        };
     } else if ((networkType === 'tcp' && transportType === 'http') || networkType === 'http') {
         const method = vmessConfig.method || 'GET';
         const path = vmessConfig.path || '/';

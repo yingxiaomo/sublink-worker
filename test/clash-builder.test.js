@@ -116,4 +116,46 @@ ss://YWVzLTEyOC1nY206dGVzdA@example.com:444#US-Node-1
     expect(fallbackGroup).toBeDefined();
     expect(fallbackGroup.proxies[0]).not.toBe('DIRECT');
   });
+
+  it('should emit v2ray-http-upgrade ws-opts for vless httpupgrade nodes', async () => {
+    const input = 'vless://uuid@example.com:443?security=tls&type=httpupgrade&host=cdn.example.com&path=%2Fupgrade#vless-hu';
+
+    const builder = new ClashConfigBuilder(input, 'minimal', [], null, 'zh-CN', 'test-agent');
+    const yamlText = await builder.build();
+    const built = yaml.load(yamlText);
+    const proxy = built.proxies.find(p => p.name === 'vless-hu');
+
+    expect(proxy).toBeDefined();
+    expect(proxy.type).toBe('vless');
+    expect(proxy.network).toBe('httpupgrade');
+    expect(proxy['ws-opts']['v2ray-http-upgrade']).toBe(true);
+  });
+
+  it('should emit v2ray-http-upgrade ws-opts for trojan httpupgrade nodes', async () => {
+    const input = 'trojan://password@example.com:443?security=tls&type=httpupgrade&host=cdn.example.com&path=%2Fupgrade#trojan-hu';
+
+    const builder = new ClashConfigBuilder(input, 'minimal', [], null, 'zh-CN', 'test-agent');
+    const yamlText = await builder.build();
+    const built = yaml.load(yamlText);
+    const proxy = built.proxies.find(p => p.name === 'trojan-hu');
+
+    expect(proxy).toBeDefined();
+    expect(proxy.type).toBe('trojan');
+    expect(proxy.network).toBe('httpupgrade');
+    expect(proxy['ws-opts']['v2ray-http-upgrade']).toBe(true);
+  });
+
+  it('should emit v2ray-http-upgrade ws-opts for vmess httpupgrade nodes', async () => {
+    const input = 'vmess://eyJ2IjoiMiIsInBzIjoiZGVtby1odSIsImFkZCI6InNlcnZlci5leGFtcGxlLmNvbSIsInBvcnQiOiI0NDMiLCJpZCI6ImI4MzEzODFkLTYzMjQtNGQ1My1hZDRmLThjZGE0OGIzMDgxMSIsImFpZCI6IjAiLCJzY3kiOiJhdXRvIiwibmV0IjoiaHR0cHVwZ3JhZGUiLCJ0eXBlIjoibm9uZSIsImhvc3QiOiJjZG4uZXhhbXBsZS5jb20iLCJwYXRoIjoiL3VwZ3JhZGUiLCJ0bHMiOiJ0bHMifQ==#demo-hu';
+
+    const builder = new ClashConfigBuilder(input, 'minimal', [], null, 'zh-CN', 'test-agent');
+    const yamlText = await builder.build();
+    const built = yaml.load(yamlText);
+    const proxy = built.proxies.find(p => p.name === 'demo-hu');
+
+    expect(proxy).toBeDefined();
+    expect(proxy.type).toBe('vmess');
+    expect(proxy.network).toBe('httpupgrade');
+    expect(proxy['ws-opts']['v2ray-http-upgrade']).toBe(true);
+  });
 });
