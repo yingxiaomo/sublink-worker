@@ -97,11 +97,11 @@ describe('VLESS ML-KEM + xhttp conversion', () => {
 });
 
 describe('TLS insecure flag parsing', () => {
-  it('Clash export forces skip-cert-verify true for TUIC even when insecure=0', () => {
+  it('Clash export respects insecure=0 for TUIC secure links', () => {
     const clash = toClash(parseTuic(TUIC_SECURE_URL));
-    // Parser keeps insecure=false, Clash export forces true for mihomo compatibility
     expect(parseTuic(TUIC_SECURE_URL).tls?.insecure).toBe(false);
-    expect(clash['skip-cert-verify']).toBe(true);
+    // insecure=0 must be honored, not forced to skip cert verification
+    expect(clash['skip-cert-verify']).toBe(false);
     expect(clash.sni).toBe('tuic.example.com');
     expect(clash['congestion-controller']).toBe('bbr');
   });
@@ -112,11 +112,11 @@ describe('TLS insecure flag parsing', () => {
     expect(clash.server).toBe('2001:db8::1');
   });
 
-  it('Clash export forces skip-cert-verify true for Hysteria2 even when insecure=0', () => {
+  it('Clash export respects insecure=0 for Hysteria2 secure links', () => {
     const parsed = parseHysteria2(HY2_SECURE_URL);
     expect(parsed.tls?.insecure).toBe(false);
     const clash = toClash(parsed);
-    expect(clash['skip-cert-verify']).toBe(true);
+    expect(clash['skip-cert-verify']).toBe(false);
     expect(clash.sni).toBe('hy2.example.com');
   });
 

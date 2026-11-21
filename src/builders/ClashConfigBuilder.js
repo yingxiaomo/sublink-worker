@@ -154,14 +154,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     tls: proxy.tls?.enabled || false,
                     'client-fingerprint': proxy.tls?.utls?.fingerprint,
                     servername: proxy.tls?.server_name || '',
-                    // Clash/mihomo: force skip-cert-verify for better share-link compatibility
-                    // (many nodes advertise insecure=0 but fail strict verification)
-                    'skip-cert-verify': true,
+                    'skip-cert-verify': !!proxy.tls?.insecure,
                     network: proxy.transport?.type || proxy.network || 'tcp',
                     'ws-opts': (proxy.transport?.type === 'ws' || proxy.transport?.type === 'httpupgrade')
                         ? {
                             path: proxy.transport.path,
                             headers: proxy.transport.headers,
+                            // mihomo needs this flag or it does a real websocket handshake and fails
                             ...(proxy.transport?.type === 'httpupgrade' ? { 'v2ray-http-upgrade': true } : {})
                         }
                         : undefined,
@@ -197,8 +196,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     server: proxy.server,
                     port: proxy.server_port,
                     uuid: proxy.uuid,
-                    // Post-quantum / custom VLESS encryption string (e.g. mlkem768x25519plus...)
-                    ...(proxy.encryption && proxy.encryption !== 'none' ? { encryption: proxy.encryption } : {}),
+                    ...(proxy.encryption ? { encryption: proxy.encryption } : {}),
                     cipher: proxy.security,
                     tls: proxy.tls?.enabled || false,
                     'client-fingerprint': proxy.tls?.utls?.fingerprint,
@@ -209,22 +207,21 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                         headers: proxy.transport.headers,
                         ...(proxy.transport?.type === 'httpupgrade' ? { 'v2ray-http-upgrade': true } : {})
                     } : undefined,
-                    'xhttp-opts': (proxy.transport?.type === 'xhttp' || proxy.transport?.type === 'splithttp') ? {
+                    'xhttp-opts': proxy.transport?.type === 'xhttp' ? {
                         path: proxy.transport.path,
-                        mode: proxy.transport.mode || 'auto',
-                        ...(proxy.transport.host ? { host: proxy.transport.host } : {}),
-                        ...(proxy.transport.headers ? { headers: proxy.transport.headers } : {})
+                        host: proxy.transport.headers?.host,
+                        mode: proxy.transport.mode
                     } : undefined,
                     'reality-opts': proxy.tls?.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
+                        'support-x25519mlkem768': proxy.tls.reality.support_x25519mlkem768,
                     } : undefined,
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
                     tfo: proxy.tcp_fast_open,
-                    // Clash/mihomo compatibility: always skip cert verify
-                    'skip-cert-verify': true,
+                    'skip-cert-verify': !!proxy.tls?.insecure,
                     udp: getClashUdpValue(proxy),
                     ...(proxy.alpn ? { alpn: proxy.alpn } : {}),
                     ...(proxy.packet_encoding ? { 'packet-encoding': proxy.packet_encoding } : {}),
@@ -245,8 +242,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     down: proxy.down,
                     'recv-window-conn': proxy.recv_window_conn,
                     sni: proxy.tls?.server_name || '',
-                    // Clash/mihomo compatibility: always skip cert verify
-                    'skip-cert-verify': true,
+                    'skip-cert-verify': !!proxy.tls?.insecure,
                     ...(proxy.hop_interval !== undefined ? { 'hop-interval': proxy.hop_interval } : {}),
                     ...(proxy.alpn ? { alpn: proxy.alpn } : {}),
                     ...(proxy.fast_open !== undefined ? { 'fast-open': proxy.fast_open } : {}),
@@ -271,13 +267,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'reality-opts': proxy.tls?.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
+                        'support-x25519mlkem768': proxy.tls.reality.support_x25519mlkem768,
                     } : undefined,
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
                     tfo: proxy.tcp_fast_open,
-                    // Clash/mihomo compatibility: always skip cert verify
-                    'skip-cert-verify': true,
+                    'skip-cert-verify': !!proxy.tls?.insecure,
                     ...(proxy.alpn ? { alpn: proxy.alpn } : {}),
                     'flow': proxy.flow ?? undefined,
                     udp: getClashUdpValue(proxy),
@@ -291,8 +287,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     uuid: proxy.uuid,
                     password: proxy.password,
                     'congestion-controller': proxy.congestion_control,
-                    // Clash/mihomo compatibility: always skip cert verify
-                    'skip-cert-verify': true,
+                    'skip-cert-verify': !!proxy.tls?.insecure,
                     ...(proxy.disable_sni !== undefined ? { 'disable-sni': proxy.disable_sni } : {}),
                     ...(proxy.tls?.alpn ? { alpn: proxy.tls.alpn } : {}),
                     'sni': proxy.tls?.server_name,
@@ -301,7 +296,10 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     ...(proxy.reduce_rtt !== undefined ? { 'reduce-rtt': proxy.reduce_rtt } : {}),
                     ...(proxy.fast_open !== undefined ? { 'fast-open': proxy.fast_open } : {}),
                 };
-            case 'anytls':
+            case 'anytls': {
+                const idleSessionCheckInterval = proxy['idle-session-check-interval'] ?? proxy.idle_session_check_interval;
+                const idleSessionTimeout = proxy['idle-session-timeout'] ?? proxy.idle_session_timeout;
+                const minIdleSession = proxy['min-idle-session'] ?? proxy.min_idle_session;
                 return {
                     name: proxy.tag,
                     type: 'anytls',
@@ -311,13 +309,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     udp: getClashUdpValue(proxy),
                     ...(proxy.tls?.utls?.fingerprint ? { 'client-fingerprint': proxy.tls.utls.fingerprint } : {}),
                     ...(proxy.tls?.server_name ? { sni: proxy.tls.server_name } : {}),
-                    // Clash/mihomo compatibility: always skip cert verify when TLS is present
-                    ...(proxy.tls ? { 'skip-cert-verify': true } : {}),
+                    ...(proxy.tls?.insecure !== undefined ? { 'skip-cert-verify': !!proxy.tls.insecure } : {}),
                     ...(proxy.tls?.alpn ? { alpn: proxy.tls.alpn } : {}),
-                    ...(proxy['idle-session-check-interval'] !== undefined ? { 'idle-session-check-interval': proxy['idle-session-check-interval'] } : {}),
-                    ...(proxy['idle-session-timeout'] !== undefined ? { 'idle-session-timeout': proxy['idle-session-timeout'] } : {}),
-                    ...(proxy['min-idle-session'] !== undefined ? { 'min-idle-session': proxy['min-idle-session'] } : {}),
+                    ...(idleSessionCheckInterval !== undefined ? { 'idle-session-check-interval': idleSessionCheckInterval } : {}),
+                    ...(idleSessionTimeout !== undefined ? { 'idle-session-timeout': idleSessionTimeout } : {}),
+                    ...(minIdleSession !== undefined ? { 'min-idle-session': minIdleSession } : {}),
                 };
+            }
             case 'naive':
                 return {
                     name: proxy.tag,

@@ -36,6 +36,19 @@ describe('Worker', () => {
         expect(json).toHaveProperty('outbounds');
     });
 
+    it('GET /singbox ignores a Clash base config ID', async () => {
+        const kv = new MemoryKVAdapter();
+        await kv.put('clash_test', JSON.stringify({
+            'proxy-groups': [{ name: 'Custom', type: 'select', proxies: ['DIRECT'] }]
+        }));
+        const app = createTestApp({ kv });
+        const config = 'vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogInRlc3QiLA0KICAiYWRkIjogIjEuMS4xLjEiLA0KICAicG9ydCI6ICI0NDMiLA0KICAiaWQiOiAiYWRkNjY2NjYtODg4OC04ODg4LTg4ODgtODg4ODg4ODg4ODg4IiwNCiAgImFpZCI6ICIwIiwNCiAgInNjeSI6ICJhdXRvIiwNCiAgIm5ldCI6ICJ3cyIsDQogICJ0eXBlIjogIm5vbmUiLA0KICAiaG9zdCI6ICIiLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICJ0bHMiDQp9';
+        const res = await app.request(`http://localhost/singbox?config=${encodeURIComponent(config)}&configId=clash_test`);
+
+        expect(res.status).toBe(200);
+        expect(await res.json()).toHaveProperty('route.rule_set');
+    });
+
     it('GET /singbox returns legacy config for sing-box 1.11 UA', async () => {
         const app = createTestApp();
         const config = 'vmess://ew0KICAidiI6ICIyIiwNCiAgInBzIjogInRlc3QiLA0KICAiYWRkIjogIjEuMS4xLjEiLA0KICAicG9ydCI6ICI0NDMiLA0KICAiaWQiOiAiYWRkNjY2NjYtODg4OC04ODg4LTg4ODgtODg4ODg4ODg4ODg4IiwNCiAgImFpZCI6ICIwIiwNCiAgInNjeSI6ICJhdXRvIiwNCiAgIm5ldCI6ICJ3cyIsDQogICJ0eXBlIjogIm5vbmUiLA0KICAiaG9zdCI6ICIiLA0KICAicGF0aCI6ICIvIiwNCiAgInRscyI6ICJ0bHMiDQp9';
@@ -113,5 +126,30 @@ proxy-groups:
         const text = await res.text();
         expect(text).toBeTruthy();
         expect(kvMock.put).toHaveBeenCalled();
+    });
+
+    // Long subscription URLs overflow the request line (414), so the UI posts them.
+    it('POST /shorten-v2 accepts url and shortCode in a JSON body', async () => {
+        const kvMock = {
+            put: vi.fn(async () => {}),
+            get: vi.fn(async () => null),
+            delete: vi.fn(async () => {})
+        };
+        const app = createTestApp({ kv: kvMock });
+        const longQuery = `?config=${'x'.repeat(20000)}`;
+        const res = await app.request('http://localhost/shorten-v2', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: `http://example.com/singbox${longQuery}`, shortCode: 'mycode' })
+        });
+        expect(res.status).toBe(200);
+        expect(await res.text()).toBe('mycode');
+        expect(kvMock.put.mock.calls[0][1]).toBe(longQuery);
+    });
+
+    it('POST /shorten-v2 rejects a missing or malformed body', async () => {
+        const app = createTestApp({ kv: { put: vi.fn(), get: vi.fn(async () => null), delete: vi.fn() } });
+        const res = await app.request('http://localhost/shorten-v2', { method: 'POST', body: 'not json' });
+        expect(res.status).toBe(400);
     });
 });

@@ -1,20 +1,14 @@
-import { parseServerInfo, parseUrlParams, parseArray, parseBool } from '../../utils.js';
+import { parseServerInfo, parseUrlParams, parseArray, parseBool, parseInsecureParam } from '../../utils.js';
 
 export function parseTuic(url) {
     const { addressPart, params, name } = parseUrlParams(url);
     const [userinfo, serverInfo] = addressPart.split('@');
     const { host, port } = parseServerInfo(serverInfo);
-    // Prefer explicit skip-cert-verify / insecure / allowInsecure; default false when omitted.
-    // (Old code defaulted true, which wrongly forced skip-cert-verify for secure links.)
-    const insecure = parseBool(
-        params['skip-cert-verify'] ?? params.insecure ?? params.allowInsecure ?? params.allow_insecure,
-        false
-    );
     const tls = {
         enabled: true,
         server_name: params.sni,
         alpn: parseArray(params.alpn),
-        insecure: !!insecure
+        insecure: parseInsecureParam(params)
     };
 
     // Share links commonly use congestion_control or congestion-control

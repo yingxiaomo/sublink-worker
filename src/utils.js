@@ -289,65 +289,67 @@ export function parseUrlParams(url) {
 export function createTlsConfig(params) {
 	let tls = { enabled: false };
 	if (params.security && params.security !== 'none') {
-		// Share links use insecure=0/1/true/false; must use parseBool, not !!string.
-		const insecure = parseBool(
-			params.allowInsecure ?? params.insecure ?? params.allow_insecure ?? params['skip-cert-verify'],
-			false
-		);
 		tls = {
 			enabled: true,
 			server_name: params.sni || params.host,
-			insecure: !!insecure,
+			insecure: parseInsecureParam(params),
+			// utls: {
+			//   enabled: true,
+			//   fingerprint: "chrome"
+			// },
 		};
-		const fingerprint = params.fp || params.fingerprint;
-		if (fingerprint) {
-			tls.utls = {
-				enabled: true,
-				fingerprint
-			};
-		}
 		if (params.security === 'reality') {
+			const supportX25519Mlkem768 = parseBool(params['support-x25519mlkem768']);
 			tls.reality = {
 				enabled: true,
 				public_key: params.pbk,
 				short_id: params.sid,
+				...(supportX25519Mlkem768 !== undefined ? { support_x25519mlkem768: supportX25519Mlkem768 } : {}),
 			};
 		}
 	}
 	return tls;
 }
 
+// Xray renamed `tcp` to `raw`, and links often omit `type` entirely; all of
+// them mean "no transport layer", not a transport with an empty type.
+const PLAIN_TCP_TYPES = new Set([undefined, '', 'tcp', 'raw']);
+
+// `splithttp` is the pre-rename spelling of `xhttp`.
+const TRANSPORT_ALIASES = { splithttp: 'xhttp' };
+
+// Share links sometimes omit the leading slash; Clash/mihomo usually expects "/path".
 function normalizeTransportPath(path) {
 	if (path === undefined || path === null || path === '') return undefined;
 	const value = String(path);
-	// Share links sometimes omit the leading slash; Clash/mihomo usually expects "/path".
 	if (value.startsWith('/')) return value;
 	return `/${value}`;
 }
 
 export function createTransportConfig(params) {
-	const type = params.type;
-	const path = normalizeTransportPath(params.path);
-	const hostHeader = params.host || params.sni;
-
-	if (type === 'xhttp' || type === 'splithttp') {
-		return {
-			// Normalize alias used by some share links
-			type: 'xhttp',
-			path,
-			mode: params.mode || 'auto',
-			...(hostHeader ? { host: hostHeader, headers: { host: hostHeader } } : {}),
-		};
-	}
-
+	if (PLAIN_TCP_TYPES.has(params.type)) return undefined;
+	const type = TRANSPORT_ALIASES[params.type] ?? params.type;
 	return {
 		type,
-		path,
-		...(hostHeader && { headers: { host: hostHeader } }),
-		...(type === 'grpc' && {
-			service_name: params.serviceName ?? params.service_name ?? undefined,
+		path: normalizeTransportPath(params.path),
+		...(params.host && { 'headers': { 'host': params.host } }),
+		...(type === 'xhttp' && params.mode && { mode: params.mode }),
+		...(params.type === 'grpc' && {
+			service_name: params.serviceName ?? undefined,
 		})
 	};
+}
+
+// Share links spell the flag several ways and send it as a string, so "0" must
+// stay false instead of disabling certificate verification.
+const INSECURE_PARAM_KEYS = ['insecure', 'allowInsecure', 'allow_insecure', 'skip-cert-verify'];
+export function parseInsecureParam(params = {}) {
+	return INSECURE_PARAM_KEYS.some(key => parseBool(params[key]) === true);
+}
+
+// uTLS fingerprint from a share link's `fp`; undefined leaves the client default.
+export function createUtlsConfig(fingerprint) {
+	return fingerprint ? { enabled: true, fingerprint } : undefined;
 }
 
 // Parse boolean value from various formats
